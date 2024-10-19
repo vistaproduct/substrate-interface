@@ -1,0 +1,42 @@
+from substrateinterface import Keypair, SubstrateInterface, exceptions
+
+# Configuration
+NODE_URL = "wss://rpc.polkadot.io"  # Polkadot node URL
+MNEMONIC = "YOUR_MNEMONIC"  # Your mnemonic phrase
+DESTINATION_ACCOUNT = "DESTINATION_ACCOUNT_ADDRESS"  # Recipient's address
+AMOUNT = 1  # Amount of DOT to send
+
+# Connect to Polkadot
+substrate = SubstrateInterface(
+    url=NODE_URL,
+    type_registry_preset='polkadot',
+)
+
+# Create keypair from mnemonic phrase
+keypair = Keypair.create_from_mnemonic(MNEMONIC)
+
+def send_dot():
+    try:
+        # Construct and send the transaction
+        extrinsic = substrate.compose_call(
+            call_module='Balances',
+            call_function='transfer',
+            call_params={
+                'dest': DESTINATION_ACCOUNT,
+                'value': substrate.get_balance(keypair.ss58_address)['free'] - AMOUNT,
+            }
+        )
+
+        # Sign and send the transaction
+        result = substrate.submit_extrinsic(extrinsic, keypair=keypair)
+        print(f"Transaction sent with hash: {result['extrinsic_hash']}")
+
+        # Wait for confirmation
+        substrate.rpc['chain_getFinalizedHead']
+        print("Transaction confirmed!")
+
+    except exceptions.SubstrateRequestException as e:
+        print(f"Error sending transaction: {e}")
+
+if __name__ == "__main__":
+    send_dot()
